@@ -11,5 +11,5 @@ import java.util.List;
 public class SportItem {
     Long id;
     String name;
-    List<Region> regionList;
+    List<Region> regions;
 }

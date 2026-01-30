@@ -9,5 +9,5 @@ import java.util.List;
 @Setter
 @EqualsAndHashCode
 public class Region {
-    List<League> leagueList;
+    List<League> leagues;
 }
