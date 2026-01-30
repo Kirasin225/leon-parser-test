@@ -10,43 +10,64 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class LeonParserService {
 
-    private static final ExecutorService customExecutor = Executors.newFixedThreadPool(3);
-    private static final HttpService httpService = new HttpService();
+    private final ExecutorService customExecutor;
+    private final HttpService httpService;
     private static final Logger logger = LoggerFactory.getLogger(LeonParserService.class);
+    private static final Set<String> TARGET_SPORTS = Set.of(
+            "Football",
+            "Tennis",
+            "Ice Hockey",
+            "Basketball"
+    );
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
             .ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
             .withZone(ZoneId.of("UTC"));
 
+    public LeonParserService(HttpService httpService, ExecutorService executor) {
+        this.httpService = httpService;
+        this.customExecutor = executor;
+    }
+
     public static void main(String[] args) {
+        ExecutorService realExecutor = Executors.newFixedThreadPool(3);
+        HttpService realHttp = new HttpService();
+
+        LeonParserService parser = new LeonParserService(realHttp, realExecutor);
         try {
-            logger.info("Fetching all sport names...");
-            List<SportItem> sportItems = getAllSportItems();
-
-            for (SportItem sportItem : sportItems) {
-
-                List<League> topLeagues = fetchTopLeagues(sportItem);
-
-                List<CompletableFuture<Void>> futures = topLeagues.stream()
-                        .map(league -> CompletableFuture.runAsync(() ->
-                                processLeague(sportItem.getName(), league), customExecutor))
-                        .toList();
-
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-            }
-
+            parser.start();
         } finally {
-            customExecutor.shutdown();
+            realExecutor.shutdown();
         }
     }
 
-    private static void processLeague(String sportName, League league) {
+    public void start() {
+        logger.info("Fetching all sport names...");
+        List<SportItem> targetSports = getAllSportItems().stream()
+                .filter(sport -> TARGET_SPORTS.contains(sport.getName()))
+                .toList();
+
+        for (SportItem sportItem : targetSports) {
+
+            List<League> topLeagues = fetchTopLeagues(sportItem);
+
+            List<CompletableFuture<Void>> futures = topLeagues.stream()
+                    .map(league -> CompletableFuture.runAsync(() ->
+                            processLeague(sportItem.getName(), league), customExecutor))
+                    .toList();
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        }
+    }
+
+    private void processLeague(String sportName, League league) {
         try {
             String url = String.format(
                     "https://leonbets.com/api-2/betline/events/all?ctag=en-US&league_id=%s&hideClosed=true&flags=reg,urlv2,orn2,mm2,rrc,nodup",
@@ -68,7 +89,7 @@ public class LeonParserService {
         }
     }
 
-    private static void processMatchDetail(String sportName, String leagueName, EventDetail basicMatch) {
+    private void processMatchDetail(String sportName, String leagueName, EventDetail basicMatch) {
         try {
             String url = String.format(
                     "https://leonbets.com/api-2/betline/event/all?ctag=en-US&eventId=%s&flags=reg,urlv2,orn2,mm2,rrc,nodup,smgv2,outv2,wd3",
@@ -85,7 +106,7 @@ public class LeonParserService {
         }
     }
 
-    private static synchronized void printPrettyOutput(String sport, String league, EventDetail match, List<Market> markets) {
+    private synchronized void printPrettyOutput(String sport, String league, EventDetail match, List<Market> markets) {
         StringBuilder sb = new StringBuilder();
 
         sb.append(sport).append(", ").append(league).append("\n");
@@ -114,18 +135,18 @@ public class LeonParserService {
         }
         sb.append("--------------------------------------------------\n");
 
-        System.out.println(sb.toString());
+        System.out.println(sb);
     }
 
 
-    private static List<SportItem> getAllSportItems() {
+    private List<SportItem> getAllSportItems() {
         return httpService.get(
                 "https://leonbets.com/api-2/betline/sports?ctag=en-US&flags=urlv2",
                 new TypeReference<List<SportItem>>() {}
         );
     }
 
-    private static List<League> fetchTopLeagues(SportItem sportItem) {
+    private List<League> fetchTopLeagues(SportItem sportItem) {
         if (sportItem.getRegions() == null) return List.of();
 
         return sportItem.getRegions().stream()
