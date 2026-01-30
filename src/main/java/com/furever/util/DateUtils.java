@@ -10,7 +10,6 @@ public class DateUtils {
             .ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'")
             .withZone(ZoneId.of("UTC"));
 
-    // 2. Метод конвертации
     public static String formatKickoff(long kickoffMillis) {
         return FORMATTER.format(Instant.ofEpochMilli(kickoffMillis));
     }
