@@ -51,7 +51,7 @@ public class HttpService {
             HttpResponse<String> response = send(url);
             return mapper.readValue(response.body(), responseType);
         } catch (Exception e) {
-            throw new RuntimeException("Не удалось скачать: " + url, e);
+            throw new RuntimeException("Downloading failed: " + url, e);
         }
     }
 
@@ -60,7 +60,7 @@ public class HttpService {
             HttpResponse<String> response = send(url);
             return mapper.readValue(response.body(), responseType);
         } catch (Exception e) {
-            throw new RuntimeException("Не удалось скачать: " + url, e);
+            throw new RuntimeException("Downloading failed: " + url, e);
         }
     }
 
@@ -75,7 +75,7 @@ public class HttpService {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            throw new RuntimeException("Ошибка сервера: " + response.statusCode());
+            throw new RuntimeException("Server error: " + response.statusCode());
         }
         return response;
     }
