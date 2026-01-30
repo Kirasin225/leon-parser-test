@@ -11,5 +11,4 @@ public class League {
     Long id;
     String name;
     boolean top;
-    Integer topOrder;
 }
